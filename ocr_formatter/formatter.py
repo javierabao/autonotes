@@ -1,6 +1,5 @@
 from docx import Document
 from transformers import AutoModelForCausalLM, AutoTokenizer
-import re
 
 class ModelManager:
     _instance = None
@@ -27,6 +26,7 @@ class TextFormatter:
     def __init__(self):
         """Initialize the text formatter with T5 model."""
         self.model_manager = ModelManager.get_instance()
+
         
     def format_with_llm(self, text: str) -> str:
         """
@@ -47,7 +47,7 @@ Restrictions:
 1. If there are missing words fill the gaps, but do not change the grammar nor words unless necessary to fix OCR errors.
 2. If there are invented words, correct them appropriately.
 3. If there are non-sense characters, remove them.
-4. Do not add any additional commentary or remarks, just provide the formatted text.
+4. Do not add any additional commentary or notes, just provide the formatted text.
 Here is the text:"""
             },
             {
@@ -84,16 +84,20 @@ Here is the text:"""
         # Remove any <think> artifacts produced by the LLM.
         # If both opening and closing tags exist, remove the tags and everything between them.
         # Otherwise remove any lone tag left behind.
+        print(f"Formatted text before cleaning: {formatted_text}")
         try:
-            if re.search(r"<think>.*?</think>", formatted_text, flags=re.I | re.S):
-                formatted_text = re.sub(r"<think>.*?</think>", "", formatted_text, flags=re.I | re.S)
-            else:
-                # remove lone opening or closing tags if present
-                formatted_text = re.sub(r"</?think>", "", formatted_text, flags=re.I)
+        # Find the first occurrence of either '<think>' or '</think>'
+            idx = formatted_text.lower().find('</think>')
+            if idx == -1:
+                idx = formatted_text.lower().find('<think>')
+            
+            # If any tag is found, remove everything before and including it
+            if idx != -1:
+                formatted_text = formatted_text[idx + len('</think>'):]
         except Exception:
-            # Be conservative: on regex failures, fallback to simple replace
-            formatted_text = formatted_text.replace("<think>", "").replace("</think>", "")
-
+            # Fallback: do nothing, keep text as is
+            pass
+        print(f"Formatted text after cleaning: {formatted_text}")
         # Trim leftover whitespace/newlines caused by removals
         formatted_text = formatted_text.strip()
 
